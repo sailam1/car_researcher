@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
 from app.config import settings
+from app.static_files import FrontendStaticFiles, frontend_dist_dir
 from app.services.duckdb_service import duckdb_service
 from app.services.feedback_join import feedback_join
 from app.services.session_store import session_store
@@ -60,6 +61,7 @@ app.mount("/static/placeholders", StaticFiles(directory=str(placeholders_dir)), 
 def health():
     from app.agents.llm_factory import openrouter_health_ok
 
+    dist = frontend_dist_dir()
     return {
         "status": "ok",
         "duckdb": duckdb_service.health_ok(),
@@ -68,4 +70,19 @@ def health():
         "openrouter_api_key_set": bool((settings.openrouter_api_key or "").strip()),
         "openrouter_chat_model": settings.openrouter_chat_model,
         "openrouter_fast_model": settings.openrouter_fast_model,
+        "frontend_dist": str(dist) if dist else None,
     }
+
+
+_dist = frontend_dist_dir()
+if _dist is not None:
+    logger.info("Serving frontend from %s", _dist)
+    app.mount(
+        "/",
+        FrontendStaticFiles(directory=str(_dist), html=True),
+        name="frontend",
+    )
+else:
+    logger.warning(
+        "frontend/dist not found — run `cd frontend && npm run build` before deploy"
+    )

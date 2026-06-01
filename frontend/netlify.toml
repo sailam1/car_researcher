@@ -1,0 +1,32 @@
+# Netlify static deploy for Cardeko React app
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+# In Netlify UI: Base directory = frontend (repo root is cardeko)
+[build]
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  VITE_API_BASE_URL = "https://car-researcher.onrender.com"
+
+# SPA: React Router / client-side routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Correct MIME types for Vite ES modules (avoids application/octet-stream errors)
+[[headers]]
+  for = "/assets/*.js"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
+
+[[headers]]
+  for = "/assets/*.mjs"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
+
+[[headers]]
+  for = "/assets/*.css"
+  [headers.values]
+    Content-Type = "text/css; charset=utf-8"

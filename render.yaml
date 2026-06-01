@@ -1,0 +1,16 @@
+# Render.com — API only (uvicorn). Frontend is on Netlify.
+# https://car-researcher.onrender.com
+services:
+  - type: web
+    name: car-researcher
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DUCKDB_IN_MEMORY
+        value: "true"
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      # Set in Render dashboard — must include your Netlify site URL(s):
+      # CORS_ORIGINS=http://localhost:5173,https://YOUR-SITE.netlify.app

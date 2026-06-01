@@ -40,7 +40,40 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 — API is proxied to port 8000.
+Open http://localhost:5173 — API is proxied to `http://127.0.0.1:4000`.
+
+**Production build** uses `frontend/.env.production`:
+
+```bash
+npm run build
+```
+
+API calls go to `https://car-researcher.onrender.com/api` (set `VITE_API_BASE_URL` in `.env.production` to change).
+
+## Production deploy (Netlify + Render)
+
+| Service | Host | Role |
+|---------|------|------|
+| **Render** | https://car-researcher.onrender.com | FastAPI API (`uvicorn`) |
+| **Netlify** | your `*.netlify.app` URL | React static site (`frontend/dist`) |
+
+### Render (API)
+
+- **Root directory:** `backend`
+- **Build:** `pip install -r requirements.txt`
+- **Start:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **Env (required):** `OPENROUTER_API_KEY`, `DUCKDB_IN_MEMORY=true`
+- **Env (CORS):** `CORS_ORIGINS=http://localhost:5173,https://YOUR-SITE.netlify.app`  
+  Use your exact Netlify URL (and custom domain if any). Without this, the browser blocks API calls.
+
+### Netlify (frontend)
+
+- **Base directory:** `frontend`
+- **Build:** `npm ci && npm run build` (or use `frontend/netlify.toml`)
+- **Publish:** `dist`
+- **Env:** `VITE_API_BASE_URL=https://car-researcher.onrender.com`
+
+After deploy, open your Netlify site — Network tab should call `https://car-researcher.onrender.com/api/...`.
 
 ## API
 

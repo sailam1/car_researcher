@@ -1,7 +1,7 @@
 /**
  * API base URL for the Cardeko backend.
  * - Dev (vite): unset → `/api` proxied to localhost:4000
- * - Prod: VITE_API_BASE_URL from .env.production (Render)
+ * - Prod (Netlify): VITE_API_BASE_URL → https://car-researcher.onrender.com/api
  */
 const raw = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ?? ''
 
