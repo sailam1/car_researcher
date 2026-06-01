@@ -15,7 +15,7 @@ a research platform through chat where user chats in the right chat panel and si
 - good for going from "I don't know what to buy" -> "yup, i am clear why i shortlisted these"
 
 
-$${\color{red}Note: backend or api takes ~1 min to load. please wait}$$
+$${\color{red}Note: }$$ :backend or api takes ~1 min to load. please wait
 
 
 **Live split deploy (typical):**
