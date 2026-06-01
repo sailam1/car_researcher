@@ -14,11 +14,6 @@
   overflow: hidden;
 }
 
-.research-layout--blocked {
-  pointer-events: none;
-  opacity: 0.45;
-}
-
 .ui-pane,
 .chat-pane {
   min-height: 0;

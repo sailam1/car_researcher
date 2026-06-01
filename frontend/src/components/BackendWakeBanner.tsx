@@ -1,64 +1,39 @@
-import { API_BASE_URL } from '../api/config'
-import {
-  IS_REMOTE_API,
-  RENDER_WAKE_HINT_SEC,
-  useBackendReady,
-} from '../context/BackendReadyContext'
+import { isRemoteBackend, RENDER_WAKE_MAX_SECONDS } from '../api/config'
 import './BackendWakeBanner.css'
 
-export function BackendWakeBanner() {
-  const { waking, failed, error, elapsedMs, attempt, retry } = useBackendReady()
+interface Props {
+  active: boolean
+  elapsedSeconds: number
+  detail?: string | null
+}
 
-  if (!IS_REMOTE_API || (!waking && !failed)) return null
+export function BackendWakeBanner({ active, elapsedSeconds, detail }: Props) {
+  if (!active || !isRemoteBackend()) return null
 
-  const elapsedSec = Math.max(1, Math.round(elapsedMs / 1000))
-  const progressPct = Math.min(
+  const pct = Math.min(
     100,
-    Math.round((elapsedMs / (RENDER_WAKE_HINT_SEC * 1000)) * 100)
+    Math.round((elapsedSeconds / RENDER_WAKE_MAX_SECONDS) * 100)
   )
 
   return (
-    <div
-      className={`backend-wake-banner ${failed ? 'failed' : ''}`}
-      role="status"
-      aria-live="polite"
-    >
-      <div className="backend-wake-inner">
-        {failed ? (
-          <>
-            <strong>Could not connect to the API</strong>
-            <p>{error}</p>
-            <p className="backend-wake-hint">
-              On Render, the server may need up to ~{RENDER_WAKE_HINT_SEC} seconds
-              to wake after inactivity.
-            </p>
-            <button type="button" className="backend-wake-retry" onClick={retry}>
-              Try again
-            </button>
-          </>
-        ) : (
-          <>
-            <strong>Starting the research API…</strong>
-            <p>
-              The backend on Render was asleep. It usually takes about{' '}
-              <strong>~{RENDER_WAKE_HINT_SEC} seconds</strong> to become active
-              after inactivity.
-            </p>
-            <p className="backend-wake-meta">
-              Waiting… {elapsedSec}s
-              {attempt > 0 ? ` (check ${attempt})` : ''}
-            </p>
-            <div className="backend-wake-progress" aria-hidden>
-              <div
-                className="backend-wake-progress-bar"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-            {API_BASE_URL ? (
-              <p className="backend-wake-host">{API_BASE_URL}</p>
-            ) : null}
-          </>
-        )}
+    <div className="backend-wake-banner" role="status" aria-live="polite">
+      <div className="backend-wake-banner-inner">
+        <strong>Waking up the API on Render</strong>
+        <p>
+          After inactivity the server sleeps. The first request can take{' '}
+          <strong>up to about a minute</strong> — please keep this tab open.
+        </p>
+        <div className="backend-wake-progress" aria-hidden="true">
+          <div
+            className="backend-wake-progress-bar"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <p className="backend-wake-elapsed">
+          Waiting… {elapsedSeconds}s
+          {elapsedSeconds >= 45 ? ' (still normal on cold start)' : ''}
+        </p>
+        {detail ? <p className="backend-wake-detail">{detail}</p> : null}
       </div>
     </div>
   )

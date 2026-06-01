@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { API_BASE_URL } from '../../api/config'
+import {
+  API_BASE_URL,
+  isRemoteBackend,
+  RENDER_WAKE_MAX_SECONDS,
+} from '../../api/config'
 import {
   createSession,
   getSession,
   sendChatStream,
   type ChatStreamEvent,
 } from '../../api/client'
-import { useBackendReady } from '../../context/BackendReadyContext'
 import { useSessionStore } from '../../store/sessionStore'
 import type { ChatMessage, DiscoveryPhase, UIState } from '../../types'
 import './ChatPanel.css'
@@ -38,18 +41,29 @@ export function ChatPanel() {
     setUiState,
     setPhase,
     setLoading,
+    setApiWaking,
+    setApiWakeElapsedSec,
   } = useSessionStore()
-  const { ready: backendReady, waking: backendWaking } = useBackendReady()
 
   useEffect(() => {
-    if (!backendReady) return
-
     async function init() {
       const saved = sessionStorage.getItem('cardeko_session_id')
       setLoading(true)
       setInitError(null)
+      const remote = isRemoteBackend()
+      if (remote) {
+        setApiWaking(true, 'Connecting to Render…')
+      }
       const controller = new AbortController()
-      const timeout = window.setTimeout(() => controller.abort(), 30_000)
+      const maxWaitMs = remote ? (RENDER_WAKE_MAX_SECONDS + 30) * 1000 : 30_000
+      const timeout = window.setTimeout(() => controller.abort(), maxWaitMs)
+      let elapsed = 0
+      const tick = remote
+        ? window.setInterval(() => {
+            elapsed += 1
+            setApiWakeElapsedSec(elapsed)
+          }, 1000)
+        : undefined
       try {
         if (saved) {
           try {
@@ -69,11 +83,15 @@ export function ChatPanel() {
           : 'the backend (uvicorn on port 4000)'
         const msg =
           e instanceof Error && e.name === 'AbortError'
-            ? `Request timed out. Is ${backendHint} reachable?`
+            ? remote
+              ? `The API did not respond within about ${RENDER_WAKE_MAX_SECONDS + 30} seconds. Render may still be starting — refresh and wait up to a minute.`
+              : `Request timed out. Is ${backendHint} reachable?`
             : `Could not reach the server at ${backendHint}.`
         setInitError(msg)
       } finally {
         window.clearTimeout(timeout)
+        if (tick) window.clearInterval(tick)
+        setApiWaking(false)
         setLoading(false)
       }
     }
@@ -81,7 +99,7 @@ export function ChatPanel() {
       initStartedRef.current = true
       void init()
     }
-  }, [backendReady, sessionId, setSession, setLoading])
+  }, [sessionId, setSession, setLoading, setApiWaking, setApiWakeElapsedSec])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -159,14 +177,11 @@ export function ChatPanel() {
         </span>
       </header>
       <div className="chat-messages">
-        {backendWaking && messages.length === 0 && (
+        {loading && messages.length === 0 && !initError && (
           <div className="chat-bubble assistant">
-            Waiting for the API to wake up on Render (about 1 minute)…
-          </div>
-        )}
-        {backendReady && loading && messages.length === 0 && !initError && (
-          <div className="chat-bubble assistant">
-            Loading catalog and assistant…
+            {isRemoteBackend()
+              ? 'Starting session once the API is awake…'
+              : 'Loading catalog and assistant…'}
           </div>
         )}
         {initError && (
@@ -196,12 +211,9 @@ export function ChatPanel() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Describe what you're looking for…"
-          disabled={!backendReady || !sessionId || loading}
+          disabled={!sessionId || loading}
         />
-        <button
-          type="submit"
-          disabled={!backendReady || !sessionId || loading || !input.trim()}
-        >
+        <button type="submit" disabled={!sessionId || loading || !input.trim()}>
           Send
         </button>
       </form>

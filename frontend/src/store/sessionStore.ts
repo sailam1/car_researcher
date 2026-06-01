@@ -9,6 +9,9 @@ interface SessionStore {
   uiState: UIState
   discoveryPhase: DiscoveryPhase
   loading: boolean
+  apiWaking: boolean
+  apiWakeElapsedSec: number
+  apiWakeDetail: string | null
   compareIds: string[]
   setSession: (
     id: string,
@@ -20,6 +23,8 @@ interface SessionStore {
   setUiState: (ui: UIState) => void
   setPhase: (phase: DiscoveryPhase) => void
   setLoading: (v: boolean) => void
+  setApiWaking: (waking: boolean, detail?: string | null) => void
+  setApiWakeElapsedSec: (sec: number) => void
   toggleCompare: (id: string) => void
 }
 
@@ -29,6 +34,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   uiState: { filters: defaultFilters(), vehicles: [] },
   discoveryPhase: 'welcome',
   loading: false,
+  apiWaking: false,
+  apiWakeElapsedSec: 0,
+  apiWakeDetail: null,
   compareIds: [],
   setSession: (id, messages, ui, phase) =>
     set({
@@ -41,6 +49,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setUiState: (ui) => set({ uiState: normalizeUiState(ui) }),
   setPhase: (phase) => set({ discoveryPhase: phase }),
   setLoading: (loading) => set({ loading }),
+  setApiWaking: (apiWaking, apiWakeDetail = null) =>
+    set({
+      apiWaking,
+      apiWakeDetail: apiWakeDetail ?? null,
+      apiWakeElapsedSec: apiWaking ? 0 : 0,
+    }),
+  setApiWakeElapsedSec: (apiWakeElapsedSec) => set({ apiWakeElapsedSec }),
   toggleCompare: (id) => {
     const cur = get().compareIds
     if (cur.includes(id)) {

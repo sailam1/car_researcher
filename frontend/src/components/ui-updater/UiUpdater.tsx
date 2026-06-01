@@ -7,7 +7,7 @@ import { VehicleCard, CompareBar } from './VehicleCard'
 import './UiUpdater.css'
 
 export function UiUpdater() {
-  const { uiState } = useSessionStore()
+  const { uiState, apiWaking } = useSessionStore()
   const [detail, setDetail] = useState<Record<string, unknown> | null>(null)
 
   async function openDetail(id: string) {
@@ -72,7 +72,9 @@ export function UiUpdater() {
       <div className="vehicle-grid">
         {uiState.vehicles.length === 0 ? (
           <p className="empty-hint">
-            No matches yet — use chat or filters to build your shortlist.
+            {apiWaking
+              ? 'Vehicle catalog will appear once the API finishes waking up…'
+              : 'No matches yet — use chat or filters to build your shortlist.'}
           </p>
         ) : (
           uiState.vehicles.slice(0, 30).map((v) => (
