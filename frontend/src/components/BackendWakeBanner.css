@@ -23,6 +23,11 @@
   color: #c5d0de;
 }
 
+.backend-wake-banner code {
+  font-size: 0.8em;
+  color: #93c5fd;
+}
+
 .backend-wake-progress {
   margin-top: 0.6rem;
   height: 4px;

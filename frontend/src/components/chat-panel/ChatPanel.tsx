@@ -5,6 +5,7 @@ import {
   isRemoteBackend,
   RENDER_WAKE_MAX_SECONDS,
 } from '../../api/config'
+import { waitForBackendReady } from '../../api/backendWake'
 import {
   createSession,
   getSession,
@@ -51,9 +52,6 @@ export function ChatPanel() {
       setLoading(true)
       setInitError(null)
       const remote = isRemoteBackend()
-      if (remote) {
-        setApiWaking(true, 'Connecting to Render…')
-      }
       const controller = new AbortController()
       const maxWaitMs = remote ? (RENDER_WAKE_MAX_SECONDS + 30) * 1000 : 30_000
       const timeout = window.setTimeout(() => controller.abort(), maxWaitMs)
@@ -65,6 +63,16 @@ export function ChatPanel() {
           }, 1000)
         : undefined
       try {
+        if (remote) {
+          setApiWaking(true, 'Waiting for Render API…')
+          await waitForBackendReady({
+            signal: controller.signal,
+            onProgress: ({ elapsedSec, detail }) => {
+              setApiWakeElapsedSec(elapsedSec)
+              setApiWaking(true, detail)
+            },
+          })
+        }
         if (saved) {
           try {
             const s = await getSession(saved)

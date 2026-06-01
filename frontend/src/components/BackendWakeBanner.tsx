@@ -1,3 +1,4 @@
+import { HEALTH_POLL_INTERVAL_MS } from '../api/backendWake'
 import { isRemoteBackend, RENDER_WAKE_MAX_SECONDS } from '../api/config'
 import './BackendWakeBanner.css'
 
@@ -20,8 +21,9 @@ export function BackendWakeBanner({ active, elapsedSeconds, detail }: Props) {
       <div className="backend-wake-banner-inner">
         <strong>Waking up the API on Render</strong>
         <p>
-          After inactivity the server sleeps. The first request can take{' '}
-          <strong>up to about a minute</strong> — please keep this tab open.
+          After inactivity the server sleeps. We ping <code>/health</code> every{' '}
+          <strong>{HEALTH_POLL_INTERVAL_MS / 1000} seconds</strong> until the API
+          responds (often up to about a minute) — please keep this tab open.
         </p>
         <div className="backend-wake-progress" aria-hidden="true">
           <div
@@ -30,8 +32,8 @@ export function BackendWakeBanner({ active, elapsedSeconds, detail }: Props) {
           />
         </div>
         <p className="backend-wake-elapsed">
-          Waiting… {elapsedSeconds}s
-          {elapsedSeconds >= 45 ? ' (still normal on cold start)' : ''}
+          Elapsed: {elapsedSeconds}s
+          {elapsedSeconds >= 45 ? ' — still normal on cold start' : ''}
         </p>
         {detail ? <p className="backend-wake-detail">{detail}</p> : null}
       </div>
