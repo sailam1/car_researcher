@@ -30,6 +30,15 @@ from app.models.state import GraphState
 router = APIRouter(prefix="/api")
 
 
+@router.get("/health")
+def api_health():
+    """Lightweight health for frontend wake-up polling (Render cold start)."""
+    return {
+        "status": "ok",
+        "duckdb": duckdb_service.health_ok(),
+    }
+
+
 @router.post("/sessions", response_model=SessionCreateResponse)
 def create_session():
     state = session_store.create_session()

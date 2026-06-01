@@ -9,3 +9,6 @@ export const API_BASE_URL = raw.replace(/\/$/, '')
 
 /** Prefix for all REST routes, e.g. `/api` or `https://host/api` */
 export const API_PREFIX = API_BASE_URL ? `${API_BASE_URL}/api` : '/api'
+
+/** True when UI talks to a remote host (e.g. Render), not Vite-local proxy only. */
+export const IS_REMOTE_API = Boolean(API_BASE_URL)

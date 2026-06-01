@@ -1,9 +1,22 @@
-.research-layout {
-  display: grid;
-  grid-template-columns: 58fr 42fr;
+.research-page {
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
+}
+
+.research-layout {
+  display: grid;
+  grid-template-columns: 58fr 42fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.research-layout--blocked {
+  pointer-events: none;
+  opacity: 0.45;
 }
 
 .ui-pane,

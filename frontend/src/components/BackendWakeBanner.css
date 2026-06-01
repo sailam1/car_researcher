@@ -1,0 +1,83 @@
+.backend-wake-banner {
+  flex-shrink: 0;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(90deg, #1e3a5f 0%, #172554 100%);
+  border-bottom: 1px solid #3b82f6;
+  color: #e8eef4;
+  z-index: 20;
+}
+
+.backend-wake-banner.failed {
+  background: linear-gradient(90deg, #451a1a 0%, #2a1515 100%);
+  border-bottom-color: #b91c1c;
+}
+
+.backend-wake-inner {
+  max-width: 720px;
+}
+
+.backend-wake-inner strong {
+  display: block;
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+  color: #93c5fd;
+}
+
+.backend-wake-banner.failed .backend-wake-inner strong {
+  color: #fca5a5;
+}
+
+.backend-wake-inner p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #c5d0de;
+}
+
+.backend-wake-hint {
+  margin-top: 0.5rem !important;
+  color: #8b9cb3 !important;
+}
+
+.backend-wake-meta {
+  margin-top: 0.5rem !important;
+  font-size: 0.8rem !important;
+  color: #93c5fd !important;
+}
+
+.backend-wake-host {
+  margin-top: 0.35rem !important;
+  font-size: 0.72rem !important;
+  color: #6b7c93 !important;
+  word-break: break-all;
+}
+
+.backend-wake-progress {
+  margin-top: 0.65rem;
+  height: 4px;
+  border-radius: 2px;
+  background: #0b0f14;
+  overflow: hidden;
+}
+
+.backend-wake-progress-bar {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.backend-wake-retry {
+  margin-top: 0.75rem;
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.backend-wake-retry:hover {
+  background: #1d4ed8;
+}

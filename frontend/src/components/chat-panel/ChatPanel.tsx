@@ -7,6 +7,7 @@ import {
   sendChatStream,
   type ChatStreamEvent,
 } from '../../api/client'
+import { useBackendReady } from '../../context/BackendReadyContext'
 import { useSessionStore } from '../../store/sessionStore'
 import type { ChatMessage, DiscoveryPhase, UIState } from '../../types'
 import './ChatPanel.css'
@@ -38,8 +39,11 @@ export function ChatPanel() {
     setPhase,
     setLoading,
   } = useSessionStore()
+  const { ready: backendReady, waking: backendWaking } = useBackendReady()
 
   useEffect(() => {
+    if (!backendReady) return
+
     async function init() {
       const saved = sessionStorage.getItem('cardeko_session_id')
       setLoading(true)
@@ -77,7 +81,7 @@ export function ChatPanel() {
       initStartedRef.current = true
       void init()
     }
-  }, [sessionId, setSession, setLoading])
+  }, [backendReady, sessionId, setSession, setLoading])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -155,7 +159,12 @@ export function ChatPanel() {
         </span>
       </header>
       <div className="chat-messages">
-        {loading && messages.length === 0 && !initError && (
+        {backendWaking && messages.length === 0 && (
+          <div className="chat-bubble assistant">
+            Waiting for the API to wake up on Render (about 1 minute)…
+          </div>
+        )}
+        {backendReady && loading && messages.length === 0 && !initError && (
           <div className="chat-bubble assistant">
             Loading catalog and assistant…
           </div>
@@ -187,9 +196,12 @@ export function ChatPanel() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Describe what you're looking for…"
-          disabled={!sessionId || loading}
+          disabled={!backendReady || !sessionId || loading}
         />
-        <button type="submit" disabled={!sessionId || loading || !input.trim()}>
+        <button
+          type="submit"
+          disabled={!backendReady || !sessionId || loading || !input.trim()}
+        >
           Send
         </button>
       </form>
