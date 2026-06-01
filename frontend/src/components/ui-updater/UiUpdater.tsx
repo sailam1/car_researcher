@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getVehicle } from '../../api/client'
 import { useSessionStore } from '../../store/sessionStore'
+import { vehicleSpecChips, vehicleTitle } from '../../utils/vehicle'
 import { FilterSection } from './FilterSection'
 import { VehicleCard, CompareBar } from './VehicleCard'
 import './UiUpdater.css'
@@ -12,7 +13,19 @@ export function UiUpdater() {
   async function openDetail(id: string) {
     try {
       const v = await getVehicle(id)
-      setDetail(v)
+      const specs = (v.specs ?? {}) as Record<string, unknown>
+      setDetail({
+        ...v,
+        fuel_type: specs.engineFuelType ?? specs.fuel_type,
+        gearbox: specs.gearboxType ?? specs.gearbox,
+        power_bhp: specs.enginePowerBhp ?? specs.power_bhp,
+        boot_litres: specs.bootLitres ?? specs.boot_litres,
+        fuel_economy_l100:
+          specs.fuelEconomyCombinedL100 ?? specs.fuel_economy_l100,
+        year_from: specs.yearFrom ?? specs.year_from,
+        drivetrain: specs.drivetrain,
+        pros: (v as { review_snippets?: string[] }).review_snippets ?? [],
+      })
     } catch {
       setDetail(null)
     }
@@ -74,10 +87,64 @@ export function UiUpdater() {
               ×
             </button>
             <h3>
-              {String(detail.make)} {String(detail.model)}
+              {vehicleTitle({
+                vehicle_id: String(detail.vehicle_id ?? ''),
+                make: String(detail.make ?? ''),
+                model: String(detail.model ?? ''),
+                variant: String(detail.variant ?? ''),
+                image_url: '',
+                pros: [],
+                cons: [],
+              })}
             </h3>
-            <p>{String(detail.variant)}</p>
-            <pre>{JSON.stringify(detail.specs, null, 2)}</pre>
+            {detail.variant ? <p className="drawer-variant">{String(detail.variant)}</p> : null}
+            <ul className="drawer-specs">
+              {vehicleSpecChips({
+                vehicle_id: String(detail.vehicle_id ?? ''),
+                make: String(detail.make ?? ''),
+                model: String(detail.model ?? ''),
+                variant: String(detail.variant ?? ''),
+                image_url: '',
+                pros: [],
+                cons: [],
+                fuel_type: detail.fuel_type as string | undefined,
+                gearbox: detail.gearbox as string | undefined,
+                power_bhp: detail.power_bhp as number | undefined,
+                boot_litres: detail.boot_litres as number | undefined,
+                fuel_economy_l100: detail.fuel_economy_l100 as number | undefined,
+                year_from: detail.year_from as number | undefined,
+                drivetrain: detail.drivetrain as string | undefined,
+                avg_rating: detail.avg_rating as number | undefined,
+              }).map((s) => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
+            {Array.isArray(detail.pros) && (detail.pros as string[]).length > 0 ? (
+              <div className="drawer-block">
+                <strong>Owner feedback</strong>
+                <ul>
+                  {(detail.pros as string[]).slice(0, 4).map((p, i) => (
+                    <li key={i}>{p}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {detail.specs && typeof detail.specs === 'object' ? (
+              <details className="drawer-raw">
+                <summary>All specifications</summary>
+                <dl>
+                  {Object.entries(detail.specs as Record<string, unknown>)
+                    .filter(([, v]) => v != null && v !== '')
+                    .slice(0, 24)
+                    .map(([k, v]) => (
+                      <div key={k}>
+                        <dt>{k}</dt>
+                        <dd>{String(v)}</dd>
+                      </div>
+                    ))}
+                </dl>
+              </details>
+            ) : null}
           </div>
         </div>
       )}

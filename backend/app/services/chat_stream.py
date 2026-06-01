@@ -21,6 +21,7 @@ from app.agents.nodes import (
     route_after_router,
 )
 from app.agents.structured import invoke_text_stream
+from app.agents.text_sanitize import sanitize_user_facing_text
 from app.config import settings
 from app.models.schemas import ChatMessage
 from app.models.state import GraphState, SessionState
@@ -105,7 +106,10 @@ def stream_chat_turn(
             session.session_id,
             agent="general_router",
             inputs={"user_message": user_message},
-            outputs={"is_general_query": state.is_general_query},
+            outputs={
+                "is_general_query": state.is_general_query,
+                "router": "llm",
+            },
             turn_id=turn_id,
         )
 
@@ -117,21 +121,24 @@ def stream_chat_turn(
                     "label": STEP_LABELS["general_qa"],
                 }
             )
+            state.session.messages.append(
+                ChatMessage(role="user", content=state.user_message)
+            )
             prompt = load_prompt(
                 "general_qa",
                 narrative_summary=state.session.narrative_summary,
                 user_message=state.user_message,
             )
-            state.session.messages.append(
-                ChatMessage(role="user", content=state.user_message)
+            raw = "".join(
+                invoke_text_stream(
+                    prompt,
+                    fast=True,
+                    temperature=settings.llm_temp_welcome,
+                    max_tokens=120,
+                )
             )
-            reply_parts: list[str] = []
-            for token in invoke_text_stream(
-                prompt, fast=False, temperature=settings.llm_temp_question_generator
-            ):
-                reply_parts.append(token)
-                yield _sse({"type": "token", "content": token})
-            state.reply = "".join(reply_parts)
+            state.reply = sanitize_user_facing_text(raw) or raw.strip()
+            yield from _stream_reply_text(state.reply)
             state.session.messages.append(
                 ChatMessage(role="assistant", content=state.reply)
             )
@@ -175,19 +182,21 @@ def stream_chat_turn(
                     }
                 )
                 q_prompt = build_question_prompt(state)
-                reply_parts: list[str] = []
+                raw = ""
                 try:
-                    for token in invoke_text_stream(
-                        q_prompt,
-                        fast=False,
-                        temperature=settings.llm_temp_question_generator,
-                    ):
-                        reply_parts.append(token)
-                        yield _sse({"type": "token", "content": token})
+                    raw = "".join(
+                        invoke_text_stream(
+                            q_prompt,
+                            fast=False,
+                            temperature=settings.llm_temp_question_generator,
+                            max_tokens=120,
+                        )
+                    )
                 except Exception as stream_exc:
                     logger = __import__("logging").getLogger(__name__)
                     logger.warning("Question stream failed: %s", stream_exc)
-                state = finalize_question_reply(state, "".join(reply_parts))
+                state = finalize_question_reply(state, raw)
+                yield from _stream_reply_text(state.reply)
                 _log_discovery_step(session.session_id, "question_generator", state, turn_id)
                 yield from _emit_ui_update(state)
             else:

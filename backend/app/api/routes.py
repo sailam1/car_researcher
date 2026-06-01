@@ -36,7 +36,7 @@ def create_session():
     welcome_text, summary = run_welcome()
     state.messages.append(ChatMessage(role="assistant", content=welcome_text))
     state.narrative_summary = summary
-    state.discovery_phase = "broad"
+    state.discovery_phase = "welcome"
     vehicles, showing, total = build_initial_catalog()
     state.vehicles = vehicles
     state.catalog_total = total
@@ -176,6 +176,7 @@ def get_vehicle(vehicle_id: str):
         raise HTTPException(404, "Vehicle not found")
     fb = feedback_join.get_summary(vehicle_id)
     specs = {k: v for k, v in row.items() if k != "vehicle_id"}
+    snippets = fb.get("snippets", []) or []
     return VehicleDetail(
         vehicle_id=vehicle_id,
         make=str(row.get("make", "")),
@@ -183,7 +184,8 @@ def get_vehicle(vehicle_id: str):
         variant=str(row.get("variant", "")),
         specs=specs,
         avg_rating=fb.get("avg_rating"),
-        review_snippets=fb.get("snippets", []),
+        review_snippets=snippets,
+        pros=[str(s)[:200] for s in snippets[:3]],
     )
 
 

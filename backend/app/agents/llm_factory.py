@@ -8,9 +8,16 @@ from typing import Any
 
 from openrouter import OpenRouter
 
+from app.agents.text_sanitize import sanitize_user_facing_text
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+_USER_FACING_SYSTEM = (
+    "You are Cardeko. Reply to the user only. "
+    "No reasoning, planning, meta commentary, or analysis. "
+    "Maximum 2 short sentences."
+)
 
 
 _PLACEHOLDER_KEY_MARKERS = (
@@ -66,8 +73,8 @@ def build_messages(
     return messages
 
 
-def _extract_piece(obj: Any) -> str:
-    """Normalize OpenRouter message/delta content (incl. Qwen reasoning field)."""
+def _content_from_piece(obj: Any) -> str:
+    """Message/delta content only — never expose model reasoning to the UI."""
     if obj is None:
         return ""
     content = getattr(obj, "content", None)
@@ -87,11 +94,6 @@ def _extract_piece(obj: Any) -> str:
                 parts.append(block)
         if parts:
             return "".join(parts)
-    reasoning = getattr(obj, "reasoning", None)
-    if reasoning is None and isinstance(obj, dict):
-        reasoning = obj.get("reasoning")
-    if isinstance(reasoning, str) and reasoning.strip():
-        return reasoning
     if content is not None and not isinstance(content, (list, dict)):
         return str(content)
     return ""
@@ -104,9 +106,12 @@ def chat_complete(
     temperature: float | None = None,
     system: str | None = None,
     max_tokens: int = 1024,
+    user_facing: bool = False,
 ) -> str:
     temp = temperature if temperature is not None else 0.2
     model = resolve_model(fast=fast)
+    if user_facing and system is None:
+        system = _USER_FACING_SYSTEM
     logger.info("OpenRouter chat_complete model=%s", model)
     try:
         with OpenRouter(api_key=_api_key(), timeout_ms=120_000) as client:
@@ -121,7 +126,9 @@ def chat_complete(
     if not response.choices:
         logger.warning("OpenRouter returned no choices for model=%s", model)
         return ""
-    text = _extract_piece(response.choices[0].message)
+    text = _content_from_piece(response.choices[0].message)
+    if user_facing:
+        text = sanitize_user_facing_text(text)
     if not text.strip():
         logger.warning("OpenRouter empty content for model=%s", model)
     return text
@@ -133,9 +140,13 @@ def chat_stream(
     fast: bool = False,
     temperature: float | None = None,
     system: str | None = None,
+    max_tokens: int = 256,
+    user_facing: bool = True,
 ) -> Generator[str, None, None]:
     temp = temperature if temperature is not None else 0.2
     model = resolve_model(fast=fast)
+    if user_facing and system is None:
+        system = _USER_FACING_SYSTEM
     logger.info("OpenRouter chat_stream model=%s", model)
     try:
         client_ctx = OpenRouter(api_key=_api_key(), timeout_ms=120_000)
@@ -148,7 +159,7 @@ def chat_stream(
                 messages=build_messages(prompt, system=system),
                 temperature=temp,
                 stream=True,
-                max_completion_tokens=1024,
+                max_completion_tokens=max_tokens,
             )
         except Exception as exc:
             raise RuntimeError(_friendly_openrouter_error(exc)) from exc
@@ -158,7 +169,7 @@ def chat_stream(
             delta = chunk.choices[0].delta
             if delta is None:
                 continue
-            piece = _extract_piece(delta)
+            piece = _content_from_piece(delta)
             if piece:
                 yield piece
 

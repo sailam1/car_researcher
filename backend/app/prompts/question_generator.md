@@ -1,4 +1,4 @@
-Generate exactly ONE follow-up question for vehicle discovery. Reply with plain text only (no JSON, no markdown).
+Generate exactly ONE follow-up question for vehicle discovery. Reply with plain text only (no JSON, no markdown, no reasoning or preamble).
 
 CRITICAL RULES:
 - Acknowledge what the user already told us (see known_preferences). Do NOT re-ask use case if they said commute, road trips, SUV, family, stylish, or comfortable.

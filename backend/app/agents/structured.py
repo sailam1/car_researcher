@@ -66,8 +66,13 @@ def invoke_text(
     *,
     fast: bool = False,
     temperature: float | None = None,
+    max_tokens: int = 256,
 ) -> str:
-    return "".join(invoke_text_stream(prompt, fast=fast, temperature=temperature))
+    return "".join(
+        invoke_text_stream(
+            prompt, fast=fast, temperature=temperature, max_tokens=max_tokens
+        )
+    )
 
 
 def invoke_text_stream(
@@ -75,6 +80,13 @@ def invoke_text_stream(
     *,
     fast: bool = False,
     temperature: float | None = None,
+    max_tokens: int = 256,
 ):
-    """Yield text tokens from OpenRouter."""
-    yield from chat_stream(prompt, fast=fast, temperature=temperature)
+    """Yield text tokens from OpenRouter (content only, no reasoning field)."""
+    yield from chat_stream(
+        prompt,
+        fast=fast,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        user_facing=True,
+    )

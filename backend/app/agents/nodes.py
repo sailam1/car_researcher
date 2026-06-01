@@ -7,6 +7,7 @@ import logging
 from typing import Any
 
 from app.agents.structured import invoke_structured, invoke_text
+from app.agents.text_sanitize import sanitize_user_facing_text
 
 logger = logging.getLogger(__name__)
 from app.config import settings
@@ -66,11 +67,9 @@ def run_welcome_llm() -> tuple[str, str]:
     return text, "New session started. User has not stated preferences yet."
 
 
-def _force_vehicle_discovery(state: GraphState) -> bool:
-    """Discovery-first: only pure off-topic chit-chat goes to general_qa."""
+def _heuristic_vehicle_discovery(state: GraphState) -> bool:
+    """Fallback when router LLM fails — prefer discovery if message looks car-related."""
     if state.session.last_question is not None:
-        return True
-    if state.session.discovery_phase not in ("welcome", "done"):
         return True
     if preferences_summary(state.session.preferences) != "none yet":
         return True
@@ -96,6 +95,7 @@ def _force_vehicle_discovery(state: GraphState) -> bool:
         "drive",
         "maintenance",
         "comfort",
+        "shortlist",
     )
     if any(h in msg for h in vehicle_hints):
         return True
@@ -103,19 +103,13 @@ def _force_vehicle_discovery(state: GraphState) -> bool:
 
 
 def node_general_router(state: GraphState) -> GraphState:
+    """First pass: LLM decides general vs vehicle discovery."""
     if state.skip_discovery or not state.user_message.strip():
         return state
     if is_clarification_about_assistant(
         state.user_message, state.session.last_question is not None
     ):
         state.is_general_query = False
-        return state
-    if _force_vehicle_discovery(state):
-        state.is_general_query = False
-        return state
-    msg = state.user_message.strip().lower()
-    if msg in ("hi", "hello", "hey", "thanks", "thank you", "bye", "goodbye"):
-        state.is_general_query = True
         return state
     prompt = load_prompt(
         "general_query_router",
@@ -128,9 +122,14 @@ def node_general_router(state: GraphState) -> GraphState:
             prompt, RoutingDecision, fast=True, temperature=settings.llm_temp_router
         )
         state.is_general_query = decision.is_general_query
+        logger.info(
+            "Router LLM: is_general_query=%s reasoning=%s",
+            decision.is_general_query,
+            decision.reasoning[:120] if decision.reasoning else "",
+        )
     except Exception as exc:
-        logger.warning("Router LLM failed, defaulting to discovery: %s", exc)
-        state.is_general_query = False
+        logger.warning("Router LLM failed, using heuristic fallback: %s", exc)
+        state.is_general_query = not _heuristic_vehicle_discovery(state)
     return state
 
 
@@ -140,7 +139,13 @@ def node_general_qa(state: GraphState) -> GraphState:
         narrative_summary=state.session.narrative_summary,
         user_message=state.user_message,
     )
-    state.reply = invoke_text(prompt, fast=True, temperature=0.5)
+    raw = invoke_text(
+        prompt,
+        fast=True,
+        temperature=settings.llm_temp_welcome,
+        max_tokens=120,
+    )
+    state.reply = sanitize_user_facing_text(raw) or raw.strip()
     state.session.messages.append(ChatMessage(role="user", content=state.user_message))
     state.session.messages.append(ChatMessage(role="assistant", content=state.reply))
     return state
@@ -467,7 +472,7 @@ def finalize_question_reply(state: GraphState, reply_text: str) -> GraphState:
         if sm
         else compute_missing_dimensions(prefs, state.session.asked_dimensions)
     )
-    text = (reply_text or "").strip()
+    text = sanitize_user_facing_text((reply_text or "").strip())
     if not text:
         text, dim = build_next_question(
             prefs,
@@ -623,7 +628,7 @@ def _update_ui_from_candidates(state: GraphState) -> None:
     cap = max(cap, 1)
     cards = rows_to_cards(
         state.session.candidate_rows[:cap],
-        include_feedback=cap <= 25,
+        include_feedback=True,
     )
     state.session.vehicles = cards
     state.session.catalog_total = catalog_total_count()

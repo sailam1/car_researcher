@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ChatMessage, DiscoveryPhase, UIState } from '../types'
 import { defaultFilters } from '../api/client'
+import { normalizeUiState } from '../utils/vehicle'
 
 interface SessionStore {
   sessionId: string | null
@@ -30,9 +31,14 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   loading: false,
   compareIds: [],
   setSession: (id, messages, ui, phase) =>
-    set({ sessionId: id, messages, uiState: ui, discoveryPhase: phase }),
+    set({
+      sessionId: id,
+      messages,
+      uiState: normalizeUiState(ui),
+      discoveryPhase: phase,
+    }),
   setMessages: (messages) => set({ messages }),
-  setUiState: (ui) => set({ uiState: ui }),
+  setUiState: (ui) => set({ uiState: normalizeUiState(ui) }),
   setPhase: (phase) => set({ discoveryPhase: phase }),
   setLoading: (loading) => set({ loading }),
   toggleCompare: (id) => {

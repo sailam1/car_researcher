@@ -17,28 +17,39 @@ def _float(v: Any) -> float | None:
         return None
 
 
+def _str_or_none(v: Any) -> str | None:
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s if s and s.lower() not in ("nan", "none", "") else None
+
+
 def row_to_card(
     row: dict[str, Any], *, include_feedback: bool = True
 ) -> VehicleCardState:
     vid = str(row.get("vehicle_id", ""))
     make = str(row.get("make", ""))
     fb = feedback_join.get_summary(vid) if include_feedback else {}
+    snippets = fb.get("snippets") or []
+    pros = [str(s)[:140] for s in snippets[:2] if str(s).strip()]
     model = str(row.get("model") or "").strip()
     if model.endswith(".0") and model[:-2].isdigit():
         model = model[:-2]
+    make_key = make.upper().replace(" ", "_") or "DEFAULT"
     return VehicleCardState(
         vehicle_id=vid,
         make=make,
         model=model,
         variant=str(row.get("variant") or "").strip(),
-        image_url=f"/api/placeholders/{make.upper().replace(' ', '_')}.png",
-        fuel_type=str(row.get("engineFuelType") or "") or None,
-        gearbox=str(row.get("gearboxType") or "") or None,
+        image_url=f"/api/placeholders/{make_key}.png",
+        fuel_type=_str_or_none(row.get("engineFuelType")),
+        gearbox=_str_or_none(row.get("gearboxType")),
         power_bhp=_float(row.get("enginePowerBhp")),
         boot_litres=_float(row.get("bootLitres")),
         fuel_economy_l100=_float(row.get("fuelEconomyCombinedL100")),
         year_from=_float(row.get("yearFrom")),
-        drivetrain=str(row.get("drivetrain") or "") or None,
+        drivetrain=_str_or_none(row.get("drivetrain")),
+        pros=pros,
         avg_rating=fb.get("avg_rating"),
     )
 
@@ -74,7 +85,7 @@ def build_initial_catalog() -> tuple[list[VehicleCardState], int, int]:
     total = catalog_total_count()
     limit = settings.ui_cards_limit
     rows = fetch_catalog_rows(limit=limit, offset=0)
-    return rows_to_cards(rows, include_feedback=False), len(rows), total
+    return rows_to_cards(rows, include_feedback=True), len(rows), total
 
 
 def build_cards_from_filters(limit: int | None = None) -> list[VehicleCardState]:
