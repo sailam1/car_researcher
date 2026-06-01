@@ -7,8 +7,9 @@ import type {
   UIState,
   VehicleCard,
 } from '../types'
+import { API_PREFIX } from './config'
 
-const API = '/api'
+const API = API_PREFIX
 
 export async function createSession(
   signal?: AbortSignal

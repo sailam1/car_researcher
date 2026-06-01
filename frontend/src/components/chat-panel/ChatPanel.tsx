@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { API_BASE_URL } from '../../api/config'
 import {
   createSession,
   getSession,
@@ -59,10 +60,13 @@ export function ChatPanel() {
         sessionStorage.setItem('cardeko_session_id', s.session_id)
         setSession(s.session_id, s.messages, s.ui_state, s.discovery_phase)
       } catch (e) {
+        const backendHint = API_BASE_URL
+          ? API_BASE_URL
+          : 'the backend (uvicorn on port 4000)'
         const msg =
           e instanceof Error && e.name === 'AbortError'
-            ? 'Request timed out. Is the backend running on port 4000?'
-            : 'Could not reach the server. Start the backend (uvicorn on port 4000).'
+            ? `Request timed out. Is ${backendHint} reachable?`
+            : `Could not reach the server at ${backendHint}.`
         setInitError(msg)
       } finally {
         window.clearTimeout(timeout)
