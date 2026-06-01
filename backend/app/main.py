@@ -43,9 +43,12 @@ def _ensure_placeholders():
 
 
 app = FastAPI(title="Cardeko API", lifespan=lifespan)
+
+_cors_origins = settings.cors_origin_list
+logger.info("CORS allow_origins: %s", _cors_origins)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,6 +74,7 @@ def health():
         "openrouter_chat_model": settings.openrouter_chat_model,
         "openrouter_fast_model": settings.openrouter_fast_model,
         "frontend_dist": str(dist) if dist else None,
+        "cors_allow_origins": _cors_origins,
     }
 
 

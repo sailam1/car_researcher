@@ -37,7 +37,10 @@ class Settings(BaseSettings):
     # Legacy alias used for initial catalog size.
     initial_catalog_limit: int = 30
     cardata_dir: str = "../cardata"
-    cors_origins: str = "http://localhost:5173"
+    # Comma-separated; must match browser Origin exactly (scheme + host, no path, no trailing /)
+    cors_origins: str = (
+        "http://localhost:5173,https://carsresearcher.netlify.app"
+    )
 
     @property
     def cardata_path(self) -> Path:
@@ -69,7 +72,12 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        origins: list[str] = []
+        for raw in self.cors_origins.split(","):
+            o = raw.strip().rstrip("/")
+            if o:
+                origins.append(o)
+        return origins
 
 
 settings = Settings()

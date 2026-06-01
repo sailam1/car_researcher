@@ -12,5 +12,5 @@ services:
         value: "true"
       - key: PYTHON_VERSION
         value: "3.12.0"
-      # Set in Render dashboard — must include your Netlify site URL(s):
-      # CORS_ORIGINS=http://localhost:5173,https://YOUR-SITE.netlify.app
+      - key: CORS_ORIGINS
+        value: "http://localhost:5173,https://carsresearcher.netlify.app"
