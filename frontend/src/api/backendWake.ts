@@ -1,13 +1,13 @@
 import {
-  healthUrl,
+  healthCheckUrls,
   isRemoteBackend,
   RENDER_WAKE_MAX_SECONDS,
 } from './config'
 
 /** Wait between failed health checks before trying again. */
 export const HEALTH_POLL_INTERVAL_MS = 3000
-/** Single check may run long while Render boots; retry after interval if it fails. */
-export const HEALTH_CHECK_TIMEOUT_MS = 75_000
+/** Per-attempt timeout (liveness should respond in seconds once Render is up). */
+export const HEALTH_CHECK_TIMEOUT_MS = 10_000
 
 export interface WakeProgress {
   elapsedSec: number
@@ -33,7 +33,7 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
   })
 }
 
-async function pingHealth(signal?: AbortSignal): Promise<boolean> {
+async function pingOneUrl(url: string, signal?: AbortSignal): Promise<boolean> {
   const checkAbort = new AbortController()
   const timeoutId = window.setTimeout(
     () => checkAbort.abort(),
@@ -43,20 +43,35 @@ async function pingHealth(signal?: AbortSignal): Promise<boolean> {
   signal?.addEventListener('abort', onParentAbort, { once: true })
 
   try {
-    const res = await fetch(healthUrl(), {
+    const res = await fetch(url, {
       method: 'GET',
+      mode: 'cors',
       cache: 'no-store',
       signal: checkAbort.signal,
     })
     if (!res.ok) return false
-    const body = (await res.json().catch(() => ({}))) as { status?: string }
-    return body.status === 'ok' || res.ok
+    try {
+      const body = (await res.json()) as { status?: string; live?: boolean }
+      return body.status === 'ok' || body.live === true
+    } catch {
+      return true
+    }
   } catch {
     return false
   } finally {
     window.clearTimeout(timeoutId)
     signal?.removeEventListener('abort', onParentAbort)
   }
+}
+
+async function pingHealth(signal?: AbortSignal): Promise<{ ok: boolean; url?: string }> {
+  const urls = healthCheckUrls()
+  for (const url of urls) {
+    if (await pingOneUrl(url, signal)) {
+      return { ok: true, url }
+    }
+  }
+  return { ok: false }
 }
 
 /**
@@ -72,6 +87,7 @@ export async function waitForBackendReady(options?: {
   const maxWaitMs = (RENDER_WAKE_MAX_SECONDS + 30) * 1000
   const started = Date.now()
   let attempt = 0
+  const urls = healthCheckUrls()
 
   while (Date.now() - started < maxWaitMs) {
     if (options?.signal?.aborted) {
@@ -83,15 +99,17 @@ export async function waitForBackendReady(options?: {
     options?.onProgress?.({
       elapsedSec,
       attempt,
-      detail: `Health check #${attempt} (every ${HEALTH_POLL_INTERVAL_MS / 1000}s)…`,
+      detail: `Health check #${attempt} → ${urls[0]} (retry every ${HEALTH_POLL_INTERVAL_MS / 1000}s)…`,
     })
 
-    const up = await pingHealth(options?.signal)
-    if (up) {
+    const { ok, url } = await pingHealth(options?.signal)
+    if (ok) {
       options?.onProgress?.({
         elapsedSec,
         attempt,
-        detail: 'API is awake — loading catalog…',
+        detail: url
+          ? `API is awake (${url}) — loading catalog…`
+          : 'API is awake — loading catalog…',
       })
       return
     }

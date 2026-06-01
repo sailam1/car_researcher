@@ -30,6 +30,12 @@ from app.models.state import GraphState
 router = APIRouter(prefix="/api")
 
 
+@router.get("/health")
+def api_health_liveness():
+    """Fast liveness for frontend wake polls (no OpenRouter/DuckDB calls)."""
+    return {"status": "ok", "live": True}
+
+
 @router.post("/sessions", response_model=SessionCreateResponse)
 def create_session():
     state = session_store.create_session()

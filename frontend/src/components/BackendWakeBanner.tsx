@@ -21,7 +21,8 @@ export function BackendWakeBanner({ active, elapsedSeconds, detail }: Props) {
       <div className="backend-wake-banner-inner">
         <strong>Waking up the API on Render</strong>
         <p>
-          After inactivity the server sleeps. We ping <code>/health</code> every{' '}
+          After inactivity the server sleeps. We ping{' '}
+          <code>/health</code> on your Render host every{' '}
           <strong>{HEALTH_POLL_INTERVAL_MS / 1000} seconds</strong> until the API
           responds (often up to about a minute) — please keep this tab open.
         </p>

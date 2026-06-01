@@ -47,16 +47,18 @@ export function ChatPanel() {
   } = useSessionStore()
 
   useEffect(() => {
+    const controller = new AbortController()
+    let tick: ReturnType<typeof setInterval> | undefined
+
     async function init() {
       const saved = sessionStorage.getItem('cardeko_session_id')
       setLoading(true)
       setInitError(null)
       const remote = isRemoteBackend()
-      const controller = new AbortController()
       const maxWaitMs = remote ? (RENDER_WAKE_MAX_SECONDS + 30) * 1000 : 30_000
       const timeout = window.setTimeout(() => controller.abort(), maxWaitMs)
       let elapsed = 0
-      const tick = remote
+      tick = remote
         ? window.setInterval(() => {
             elapsed += 1
             setApiWakeElapsedSec(elapsed)
@@ -66,12 +68,12 @@ export function ChatPanel() {
         if (remote) {
           setApiWaking(true, 'Waiting for Render API…')
           await waitForBackendReady({
-            signal: controller.signal,
             onProgress: ({ elapsedSec, detail }) => {
               setApiWakeElapsedSec(elapsedSec)
               setApiWaking(true, detail)
             },
           })
+          setApiWaking(false)
         }
         if (saved) {
           try {
@@ -106,6 +108,13 @@ export function ChatPanel() {
     if (!sessionId && !initStartedRef.current) {
       initStartedRef.current = true
       void init()
+    }
+
+    return () => {
+      controller.abort()
+      if (tick) window.clearInterval(tick)
+      // Strict Mode remount: allow init to run again after cleanup aborted the first poll
+      initStartedRef.current = false
     }
   }, [sessionId, setSession, setLoading, setApiWaking, setApiWakeElapsedSec])
 
