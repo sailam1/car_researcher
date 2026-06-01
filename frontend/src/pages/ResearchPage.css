@@ -1,0 +1,20 @@
+.research-layout {
+  display: grid;
+  grid-template-columns: 58fr 42fr;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.ui-pane,
+.chat-pane {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .research-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}
